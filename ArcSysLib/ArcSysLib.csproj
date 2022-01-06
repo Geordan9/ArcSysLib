@@ -75,7 +75,16 @@
   <ItemGroup>
     <None Include="GeoDotNetKey.pfx" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\Projects\Ionic.Zlib\Ionic.Zlib\Ionic.Zlib.csproj">
+      <Project>{4068e321-94ca-4ea5-b1f9-33e1d854e6d2}</Project>
+      <Name>Ionic.Zlib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\VFSILib\VFSILib\VFSILib.csproj">
+      <Project>{74139b5e-9bf9-4b11-a11a-bb44a4384029}</Project>
+      <Name>VFSILib</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
