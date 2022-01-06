@@ -1,9 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30002.166
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArcSysLib", "ArcSysLib\ArcSysLib.csproj", "{78146821-FBC1-43AF-B515-BE2822CBBCBB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Lib", "Lib", "{FA7DEEB9-016F-43B4-8AF6-C24BDF5EAF3C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VFSILib", "..\VFSILib\VFSILib\VFSILib.csproj", "{74139B5E-9BF9-4B11-A11A-BB44A4384029}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ionic.Zlib", "..\..\..\Projects\Ionic.Zlib\Ionic.Zlib\Ionic.Zlib.csproj", "{4068E321-94CA-4EA5-B1F9-33E1D854E6D2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,9 +21,21 @@ Global
 		{78146821-FBC1-43AF-B515-BE2822CBBCBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{78146821-FBC1-43AF-B515-BE2822CBBCBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{78146821-FBC1-43AF-B515-BE2822CBBCBB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74139B5E-9BF9-4B11-A11A-BB44A4384029}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74139B5E-9BF9-4B11-A11A-BB44A4384029}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74139B5E-9BF9-4B11-A11A-BB44A4384029}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74139B5E-9BF9-4B11-A11A-BB44A4384029}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4068E321-94CA-4EA5-B1F9-33E1D854E6D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4068E321-94CA-4EA5-B1F9-33E1D854E6D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4068E321-94CA-4EA5-B1F9-33E1D854E6D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4068E321-94CA-4EA5-B1F9-33E1D854E6D2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{74139B5E-9BF9-4B11-A11A-BB44A4384029} = {FA7DEEB9-016F-43B4-8AF6-C24BDF5EAF3C}
+		{4068E321-94CA-4EA5-B1F9-33E1D854E6D2} = {FA7DEEB9-016F-43B4-8AF6-C24BDF5EAF3C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {012BF18A-C6E7-4BBB-B947-848ED204443D}
