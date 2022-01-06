@@ -1,0 +1,3 @@
+[submodule "VFSILib"]
+	path = VFSILib
+	url = https://github.com/Geordan9/VFSILib.git
