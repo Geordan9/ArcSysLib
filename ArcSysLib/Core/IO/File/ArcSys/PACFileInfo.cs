@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using ArcSysLib.Core.ArcSys;
+using ArcSysLib.Core.ArcSys.Custom;
 using VFSILib.Common.Enum;
 using VFSILib.Core.IO;
 using VFSILib.Util.Extension;
@@ -12,7 +13,7 @@ namespace ArcSysLib.Core.IO.File.ArcSys;
 
 public class PACFileInfo : ArcSysDirectoryInfo
 {
-    public PACFileInfo(string path, int MinNameLength = 24, bool preCheck = true) : base(path, preCheck)
+    public PACFileInfo(string path, bool preCheck = true) : base(path, preCheck)
     {
         if (!System.IO.File.GetAttributes(path).HasFlag(FileAttributes.Directory))
         {
@@ -22,11 +23,11 @@ public class PACFileInfo : ArcSysDirectoryInfo
         else
         {
             PACFile.Params = (Parameters) 0x1;
-            CreatePACDataFromFolder(MinNameLength, null);
+            CreatePACDataFromFolder(null);
         }
     }
 
-    public PACFileInfo(string folderPath, Parameters parameters, PACFileOrder pfo = null, int MinNameLength = 24,
+    public PACFileInfo(string folderPath, Parameters parameters, PACFileOrder pfo = null,
         ByteOrder endianness = ByteOrder.LittleEndian) :
         base(folderPath)
     {
@@ -35,7 +36,7 @@ public class PACFileInfo : ArcSysDirectoryInfo
 
         PACFile.Params = parameters | (Parameters) 0x1 /*Default*/;
         Endianness = endianness;
-        CreatePACDataFromFolder(MinNameLength, pfo);
+        CreatePACDataFromFolder(pfo);
     }
 
     public PACFileInfo(string path, ulong length, ulong offset, ArcSysDirectoryInfo parent, bool preCheck = true) :
@@ -54,12 +55,12 @@ public class PACFileInfo : ArcSysDirectoryInfo
     }
 
     public PACFileInfo(ArcSysFileSystemInfo[] virtualFiles, Parameters parameters, PACFileOrder pfo = null,
-        int MinNameLength = 24, ByteOrder endianness = ByteOrder.LittleEndian, string name = "Memory") :
+        ByteOrder endianness = ByteOrder.LittleEndian, string name = "Memory") :
         base(new MemoryStream(new byte[0]), name, false)
     {
         PACFile.Params = parameters | (Parameters) 0x1 /*Default*/;
         Endianness = endianness;
-        RebuildPACData(virtualFiles, parameters, MinNameLength, pfo);
+        RebuildPACData(virtualFiles, parameters, pfo);
     }
 
     public PAC PACFile { get; } = new();
@@ -113,7 +114,7 @@ public class PACFileInfo : ArcSysDirectoryInfo
                     EndiannessChecked = true;
                 }
 
-                ReadHeaderInfo(reader);
+                ReadHeaderInfo(reader, onlyHeader);
                 reader.Close();
             }
             catch
@@ -122,9 +123,9 @@ public class PACFileInfo : ArcSysDirectoryInfo
         }
     }
 
-    private void ReadHeaderInfo(EndiannessAwareBinaryReader reader)
+    private void ReadHeaderInfo(EndiannessAwareBinaryReader reader, bool onlyHeader)
     {
-        MagicBytes = reader.ReadBytes(4, ByteOrder.LittleEndian);
+        MagicBytes = reader.ReadBytes(0x4, ByteOrder.LittleEndian);
         if (!IsValidPAC) return;
 
         PACFile.HeaderSize = reader.ReadUInt32();
@@ -135,8 +136,14 @@ public class PACFileInfo : ArcSysDirectoryInfo
 
         PACFile.FileNameLength = reader.ReadInt32();
 
-        reader.BaseStream.Seek(8, SeekOrigin.Current);
+        reader.BaseStream.Seek(0x8, SeekOrigin.Current);
 
+        if (!onlyHeader)
+            ReadFileHeaderInfo(reader);
+    }
+
+    private void ReadFileHeaderInfo(EndiannessAwareBinaryReader reader)
+    {
         PACFile.Files = new PAC.File[PACFile.FileCount];
 
         for (var i = 0; i < PACFile.FileCount; i++)
@@ -168,13 +175,19 @@ public class PACFileInfo : ArcSysDirectoryInfo
 
         try
         {
-            if (PACFile.FileCount <= 0)
-                return new ArcSysFileSystemInfo[0];
-
             if (Files != null && !recheck)
                 return Files;
 
-            using var reader = new EndiannessAwareBinaryReader(GetReadStream(), Endianness);
+            if (PACFile.FileCount <= 0) return new ArcSysFileSystemInfo[0];
+
+            if (PACFile.Files == null || PACFile.Files.Length == 0)
+            {
+                using var reader = new EndiannessAwareBinaryReader(GetReadStream(), Endianness);
+                reader.BaseStream.Seek(0x20, SeekOrigin.Current);
+                ReadFileHeaderInfo(reader);
+                reader.Close();
+            }
+
             var virtualFiles = new ArcSysFileSystemInfo[PACFile.FileCount];
 
             for (var i = 0; i < PACFile.FileCount; i++)
@@ -211,8 +224,6 @@ public class PACFileInfo : ArcSysDirectoryInfo
                 };
             }
 
-            reader.Close();
-
             Files = virtualFiles;
             return Files;
         }
@@ -223,26 +234,26 @@ public class PACFileInfo : ArcSysDirectoryInfo
         }
     }
 
-    private void CreatePACDataFromFolder(int MinNameLength, PACFileOrder pfo)
+    private void CreatePACDataFromFolder(PACFileOrder pfo)
     {
-        using var memstream = ProcessFolder(FullName, MinNameLength, pfo);
+        using var memstream = ProcessFolder(FullName, pfo);
         if (memstream == null)
             return;
 
         VFSIBytes = memstream.ToArray();
     }
 
-    private void RebuildPACData(ArcSysFileSystemInfo[] files, Parameters parameters, int MinNameLength,
+    private void RebuildPACData(ArcSysFileSystemInfo[] files, Parameters parameters,
         PACFileOrder pfo)
     {
         CreatePAC(
             files.Select(f => new Tuple<FileSystemInfo, MemoryStream>(f, new MemoryStream(f.GetBytes()))).ToArray(),
-            MinNameLength, pfo);
+            pfo);
 
         var pfi = (PACFileInfo) Parent;
         if (pfi != null)
         {
-            pfi.RebuildPACData(GetFiles(), parameters, MinNameLength, pfo);
+            pfi.RebuildPACData(GetFiles(), parameters, pfo);
         }
         else
         {
@@ -251,7 +262,7 @@ public class PACFileInfo : ArcSysDirectoryInfo
         }
     }
 
-    private MemoryStream ProcessFolder(string path, int MinNameLength, PACFileOrder pfo)
+    private MemoryStream ProcessFolder(string path, PACFileOrder pfo)
     {
         var folders = Directory.GetDirectories(path).Select(d => new DirectoryInfo(d)).ToArray();
         var files = Directory.GetFiles(path).Select(f => new FileInfo(f)).ToArray();
@@ -268,24 +279,23 @@ public class PACFileInfo : ArcSysDirectoryInfo
         for (var i = 0; i < fsiMemArray.Length; i++)
             fsiMemArray[i] = new Tuple<FileSystemInfo, MemoryStream>(fsia[i],
                 fsia[i].Attributes.HasFlag(FileAttributes.Directory)
-                    ? ProcessFolder(fsia[i].FullName, MinNameLength,
-                        pfo.ChildOrders.Where(co =>
-                            Path.GetExtension(co.File).ToLower() == ".pac" &&
-                            Path.GetFileNameWithoutExtension(co.File) == fsia[i].Name).FirstOrDefault())
+                    ? ProcessFolder(fsia[i].FullName, pfo?.ChildOrders.Where(co =>
+                        Path.GetExtension(co.File).ToLower() == ".pac" &&
+                        Path.GetFileNameWithoutExtension(co.File) == fsia[i].Name).FirstOrDefault())
                     : new FileStream(fsia[i].FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
                         .ToMemoryStream());
 
-        return CreatePACStream(fsiMemArray, MinNameLength, pfo);
+        return CreatePACStream(fsiMemArray, pfo);
     }
 
     public void RemoveItem(ArcSysFileSystemInfo vfsi, PACFileOrder pfo)
     {
         var filesList = GetFiles().ToList();
         filesList.Remove(vfsi);
-        RebuildPACData(filesList.ToArray(), PACFile.Params, PACFile.FileNameLength, pfo);
+        RebuildPACData(filesList.ToArray(), PACFile.Params, pfo);
     }
 
-    private MemoryStream CreatePACStream(Tuple<FileSystemInfo, MemoryStream>[] fsiMemArray, int MinNameLength,
+    private MemoryStream CreatePACStream(Tuple<FileSystemInfo, MemoryStream>[] fsiMemArray,
         PACFileOrder pfo)
     {
         var createExtNameID = PACFile.Params.HasFlag(Parameters.GenerateExtendedNameID);
@@ -311,8 +321,12 @@ public class PACFileInfo : ArcSysDirectoryInfo
         }).ToArray();
 
         var longestFileName = GetMaxNameLength(names);
-        if (longestFileName < MinNameLength)
-            longestFileName = MinNameLength;
+
+        if (PACFile.Params.HasFlag(Parameters.FileHeaderEndPadding))
+        {
+            var remainder = longestFileName % 0x10;
+            longestFileName += remainder == 0 ? remainder : 0x10 - remainder;
+        }
 
         var fileMemoryStream = new MemoryStream();
 
@@ -344,10 +358,16 @@ public class PACFileInfo : ArcSysDirectoryInfo
                 Buffer.BlockCopy(nameBytes, 0, bytes, 0, nameBytes.Length);
                 writer.Write(bytes, ByteOrder.LittleEndian);
                 writer.Write(i);
+                if (PACFile.Params.HasFlag(Parameters.FileHeaderEndPadding))
+                {
+                    var fileSizePadding = fsiMemArray[i].Item2.Length % 0x80;
+                    fileSizePadding = fileSizePadding == 0 ? fileSizePadding : 0x80 - fileSizePadding;
+                    fileLength += (int)fileSizePadding;
+                }
                 writer.Write(fileLength);
-                var length = (int) fsiMemArray[i].Item2.Length % 16;
+                var length = (int)fsiMemArray[i].Item2.Length % 16;
                 length = length == 0 ? length : 16 - length;
-                length += (int) fsiMemArray[i].Item2.Length;
+                length += (int)fsiMemArray[i].Item2.Length;
                 fileLength += length;
                 writer.Write((int) fsiMemArray[i].Item2.Length);
                 if (createNameID)
@@ -362,20 +382,40 @@ public class PACFileInfo : ArcSysDirectoryInfo
                     writer.Write(nameID);
                 }
 
-                var padLength = (longestFileName + 12 + (createNameID ? 4 : 0)) % 16;
-                padLength = padLength == 0 ? createNameID ? 0 : 16 : 16 - padLength;
+                var padLength = (longestFileName + 12 + (createNameID ? 0x4 : 0x0)) % 0x10;
+                padLength = padLength == 0 ? createNameID ? 0 : 0x10 : 0x10 - padLength;
                 writer.Write(new byte[padLength]);
             }
 
             var headersize = (int) writer.BaseStream.Position;
 
+            if (PACFile.Params.HasFlag(Parameters.FileHeaderEndPadding))
+            {
+                var padLength = headersize % 0x80;
+                padLength = padLength == 0 ? padLength : 0x80 - padLength;
+                writer.Write(new byte[padLength]);
+            }
+
             foreach (var fsiMem in fsiMemArray)
                 using (fsiMem.Item2)
                 {
                     writer.Write(fsiMem.Item2.ToArray(), ByteOrder.LittleEndian);
-                    var padLength = (int) fsiMem.Item2.Length % 16;
-                    padLength = padLength == 0 ? padLength : 16 - padLength;
-                    writer.Write(new byte[padLength]);
+                    var maxSize = fsiMem.Item2.Length;
+                    if (!PACFile.Params.HasFlag(Parameters.NoByteAlignment))
+                    {
+                        var padLength = (int) maxSize % 0x10;
+                        padLength = padLength == 0 ? padLength : 0x10 - padLength;
+                        writer.Write(new byte[padLength]);
+
+                        maxSize += padLength;
+                    }
+
+                    if (PACFile.Params.HasFlag(Parameters.FileHeaderEndPadding))
+                    {
+                        var padLength = (int)maxSize % 0x80;
+                        padLength = padLength == 0 ? padLength : 0x80 - padLength;
+                        writer.Write(new byte[padLength]);
+                    }
                 }
 
             writer.BaseStream.Position = 4;
@@ -388,9 +428,9 @@ public class PACFileInfo : ArcSysDirectoryInfo
         return fileMemoryStream;
     }
 
-    private void CreatePAC(Tuple<FileSystemInfo, MemoryStream>[] fsiMemArray, int MinNameLength, PACFileOrder pfo)
+    private void CreatePAC(Tuple<FileSystemInfo, MemoryStream>[] fsiMemArray, PACFileOrder pfo)
     {
-        using var memstream = CreatePACStream(fsiMemArray, MinNameLength, pfo);
+        using var memstream = CreatePACStream(fsiMemArray, pfo);
         if (memstream == null)
             return;
 

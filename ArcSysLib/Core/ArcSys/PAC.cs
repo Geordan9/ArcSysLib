@@ -7,6 +7,8 @@ public class PAC
     [Flags]
     public enum Parameters : uint
     {
+        FileHeaderEndPadding = 0x10,
+        NoByteAlignment = 0x40000000,
         GenerateNameID = 0x80000000,
         GenerateExtendedNameID = 0xA0000000
     }

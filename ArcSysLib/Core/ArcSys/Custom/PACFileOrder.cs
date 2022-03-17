@@ -1,4 +1,4 @@
-﻿namespace ArcSysLib.Core.ArcSys;
+﻿namespace ArcSysLib.Core.ArcSys.Custom;
 
 public class PACFileOrder
 {

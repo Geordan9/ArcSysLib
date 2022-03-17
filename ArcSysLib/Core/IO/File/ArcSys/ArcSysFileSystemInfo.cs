@@ -17,15 +17,15 @@ public class ArcSysFileSystemInfo : VirtualFileSystemInfo
         None = 0x0,
         FPACEncryption = 0x1,
         FPACDeflation = 0x2,
-        BBTAGEncryption = 0x4,
+        ArcSysMD5Encryption = 0x4,
         SwitchCompression = 0x8
     }
 
-    public ArcSysFileSystemInfo(string path, bool preCheck = true) : base(new FileInfo(path), preCheck)
+    public ArcSysFileSystemInfo(string path, bool preCheck = true) : base(path, preCheck)
     {
     }
 
-    public ArcSysFileSystemInfo(FileSystemInfo fi, bool preCheck = true) : this(fi.FullName, 0, 0, null, preCheck)
+    public ArcSysFileSystemInfo(FileSystemInfo fi, bool preCheck = true) : base(fi, preCheck)
     {
     }
 
@@ -72,7 +72,7 @@ public class ArcSysFileSystemInfo : VirtualFileSystemInfo
         }
 
         if (string.IsNullOrEmpty(Extension) && MD5Tools.IsMD5(Name))
-            return FileObfuscation.BBTAGEncryption;
+            return FileObfuscation.ArcSysMD5Encryption;
 
 
         return FileObfuscation.None;
@@ -160,9 +160,9 @@ public class ArcSysFileSystemInfo : VirtualFileSystemInfo
                                 UpdateMagicAndObfuscation(stream);
                             }
 
-                            if (Obfuscation.HasFlag(FileObfuscation.BBTAGEncryption))
+                            if (Obfuscation.HasFlag(FileObfuscation.ArcSysMD5Encryption))
                             {
-                                var output = BBTAGMD5CryptTools.BBTAGMD5CryptStream(
+                                var output = ArcSysMD5CryptTools.ArcSysMD5CryptStream(
                                     stream, path,
                                     CryptMode.Decrypt, true);
                                 stream.Close();

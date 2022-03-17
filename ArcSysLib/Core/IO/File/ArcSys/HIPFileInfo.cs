@@ -35,9 +35,10 @@ public class HIPFileInfo : ArcSysFileInfo
     }
 
     public HIPFileInfo(string path, HIP.Encoding hipEncoding, bool layeredImage = false, int offsetX = 0,
-        int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0,
+        int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0, Color[] importedPalette = null,
         ByteOrder endianness = ByteOrder.LittleEndian) : base(path)
     {
+        Palette = importedPalette;
         Endianness = endianness;
         var ext = Path.GetExtension(path).ToLower();
         Bitmap bmp = null;
@@ -49,46 +50,39 @@ public class HIPFileInfo : ArcSysFileInfo
         CreateHIP(bmp, hipEncoding, layeredImage, offsetX, offsetY, canvasWidth, canvasHeight);
     }
 
-    public HIPFileInfo(string path, HIP.Encoding hipEncoding, ref HIP refHIPFile,
-        ByteOrder endianness = ByteOrder.LittleEndian) : base(path)
+    public HIPFileInfo(string path, HIP.Encoding hipEncoding, ref HIP refHIPFile, Color[] importedPalette = null,
+        ByteOrder endianness = ByteOrder.LittleEndian) : this(path, hipEncoding,
+        refHIPFile.Params.extraParams.HasFlag(HIP.ExtraParams.RenderableLayers) &&
+        refHIPFile.Params.layeredImages != 0,
+        refHIPFile.OffsetX, refHIPFile.OffsetY, refHIPFile.CanvasWidth,
+        refHIPFile.CanvasHeight, importedPalette, endianness)
     {
-        Endianness = endianness;
-        var ext = Path.GetExtension(path).ToLower();
-        Bitmap bmp = null;
-        var native = ImageTools.NativeImageExtensions.Contains(ext);
-        if (native)
-            bmp = (Bitmap) Image.FromFile(path, true);
-        else if (ext == ".dds") bmp = new DDSFileInfo(path).GetImage();
-        CreateHIP(bmp, hipEncoding,
-            refHIPFile.Params.extraParams.HasFlag(HIP.ExtraParams.RenderableLayers) &&
-            refHIPFile.Params.layeredImages != 0,
-            refHIPFile.OffsetX, refHIPFile.OffsetY, refHIPFile.CanvasWidth,
-            refHIPFile.CanvasHeight);
     }
 
-    public HIPFileInfo(Bitmap bmp, ByteOrder endianness = ByteOrder.LittleEndian) : base(string.Empty, false)
+    public HIPFileInfo(Bitmap bmp, Color[] importedPalette = null, ByteOrder endianness = ByteOrder.LittleEndian) :
+        base(string.Empty, false)
     {
+        Palette = importedPalette;
         Endianness = endianness;
         CreateHIP(bmp);
     }
 
     public HIPFileInfo(Bitmap bmp, HIP.Encoding hipEncoding, bool layeredImage = false, int offsetX = 0,
-        int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0,
+        int offsetY = 0, int canvasWidth = 0, int canvasHeight = 0, Color[] importedPalette = null,
         ByteOrder endianness = ByteOrder.LittleEndian) : base(string.Empty)
     {
+        Palette = importedPalette;
         Endianness = endianness;
         CreateHIP(bmp, hipEncoding, layeredImage, offsetX, offsetY, canvasWidth, canvasHeight);
     }
 
-    public HIPFileInfo(Bitmap bmp, HIP.Encoding hipEncoding, ref HIP refHIPFile,
-        ByteOrder endianness = ByteOrder.LittleEndian) : base(string.Empty)
+    public HIPFileInfo(Bitmap bmp, HIP.Encoding hipEncoding, ref HIP refHIPFile, Color[] importedPalette = null,
+        ByteOrder endianness = ByteOrder.LittleEndian) : this(bmp, hipEncoding,
+        refHIPFile.Params.extraParams.HasFlag(HIP.ExtraParams.RenderableLayers) &&
+        refHIPFile.Params.layeredImages != 0,
+        refHIPFile.OffsetX, refHIPFile.OffsetY, refHIPFile.CanvasWidth,
+        refHIPFile.CanvasHeight, importedPalette, endianness)
     {
-        Endianness = endianness;
-        CreateHIP(bmp, hipEncoding,
-            refHIPFile.Params.extraParams.HasFlag(HIP.ExtraParams.RenderableLayers) &&
-            refHIPFile.Params.layeredImages != 0,
-            refHIPFile.OffsetX, refHIPFile.OffsetY, refHIPFile.CanvasWidth,
-            refHIPFile.CanvasHeight);
     }
 
     public HIPFileInfo(string path, ulong length, ulong offset, ArcSysDirectoryInfo parent, bool preCheck = true) :
@@ -685,7 +679,7 @@ public class HIPFileInfo : ArcSysFileInfo
             HIPFile.OffsetX = offsetX;
             HIPFile.OffsetY = offsetY;
             HIPFile.PixelFormat = bmp.PixelFormat;
-            Palette = bmp.Palette.Entries;
+            Palette ??= bmp.Palette.Entries;
             HIPFile.ColorRange = (uint) Palette.Length;
             HIPFile.PixelEncoding = hipEncoding;
         }
